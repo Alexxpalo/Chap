@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>CHAP</title>
+    </head>
+    <body>
+        <h1>Welcome to CHAP!</h1>
+        <canvas id="GameCanvas" width="1400" height="750" style="border: 1px solid black;"></canvas>
+    </body>
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+        var playerX = Math.floor(Math.random() * 1350);
+        var playerY = Math.floor(Math.random() * 700);
+        var pcr = Math.floor(Math.random() * 256); var pcg = Math.floor(Math.random() * 256); var pcb = Math.floor(Math.random() * 256);
+        var c = document.getElementById("GameCanvas");
+        var local_ctx = c.getContext("2d");
+        var ext_ctx = c.getContext("2d");
+        var playeroldX; var playeroldY; var ext_playerX; var ext_playerY; var ext_pcr; var ext_pcg; var ext_pcb;
+        local_ctx.fillStyle = 'rgb(' + pcr + ', ' + pcg + ', ' + pcb + ')';
+        local_ctx.fillRect(playerX, playerY, 50, 50);
+
+        function EmitPlayerMovement() {
+            socket.emit("PlayerMoved", playerX, playerY, playeroldX, playeroldY, pcr, pcg, pcb, (response) => {
+            });
+            console.log("Position sent");
+        }
+
+        function EmitPlayerCollision() {
+            socket.emit("PlayerCollision", playerX, playerY, pcr, pcg, pcb, ext_playerX, ext_playerY, ext_pcr, ext_pcg, ext_pcb);
+        }
+
+        function PlayerMovement() {
+            local_ctx.fillStyle = 'rgb(' + pcr + ', ' + pcg + ', ' + pcb + ')';
+            local_ctx.clearRect(playeroldX, playeroldY, 50, 50);
+            local_ctx.fillRect(playerX, playerY, 50, 50);
+            console.log("You moved!");
+        }
+
+        socket.on("connect", () => {
+            console.log(socket.id);
+            EmitPlayerMovement();
+        });
+
+        socket.on("PlayerMoved_S", (playerX, playerY, playeroldX, playeroldY, pcr, pcg, pcb) => {
+            ext_ctx.fillStyle = 'rgb(' + pcr + ', ' + pcg + ', ' + pcb + ')';
+            ext_ctx.clearRect(playeroldX, playeroldY, 50, 50);
+            ext_ctx.fillRect(playerX, playerY, 50, 50);
+            console.log("mowed from:", playeroldX, playeroldY, " to ", playerX , playerY, " RGB ", pcr, pcg, pcb);
+            ext_playerX = playerX; ext_playerY = playerY; ext_pcr = pcr; ext_pcg = pcg; ext_pcb = pcb;
+        });
+
+        socket.on("PlayerCollision_S", (ext_playerX, ext_playerY, ext_pcr, ext_pcg, ext_pcb) => {
+            if (playerX === ext_playerX && playerY === ext_playerY) {
+                local_ctx.clearRect(playeroldX, playeroldY, 50, 50);
+                local_ctx.fillStyle = 'rgb(' + ext_pcr + ', ' + ext_pcg + ', ' + ext_pcb + ')';
+                local_ctx.fillRect(playerX, playerY, 50, 50);
+            }
+        });
+
+        document.addEventListener('keydown', (event) => {
+            playeroldX = playerX;
+            playeroldY = playerY;
+
+            if (playerX < ext_playerX + 50 &&
+            playerX + 50 > ext_playerX &&
+            playerY < ext_playerY + 50 &&
+            50 + playerY > ext_playerY) {
+                console.log("collided");
+                if (event.key == 'd') {
+                playerX = playerX - 10;
+            } else if (event.key == 'a') {
+                playerX = playerX + 10;
+            } else if (event.key == 'w') {
+                playerY = playerY + 10;
+            } else if (event.key == 's') {
+                playerY = playerY - 10;
+            }
+            local_ctx.clearRect(playeroldX, playeroldY, 50, 50);
+            local_ctx.fillStyle = 'rgb(' + pcr + ', ' + pcg + ', ' + pcb + ')';
+            local_ctx.fillRect(playerX, playerY, 50, 50);
+            ext_ctx.fillStyle = 'rgb(' + ext_pcr + ', ' + ext_pcg + ', ' + ext_pcb + ')';
+            ext_ctx.fillRect(ext_playerX, ext_playerY, 50, 50);
+            EmitPlayerMovement();
+            EmitPlayerCollision();
+            } else {
+
+            if (event.key == 'd') {
+                playerX = playerX + 10;
+            } else if (event.key == 'a') {
+                playerX = playerX - 10;
+            } else if (event.key == 'w') {
+                playerY = playerY - 10;
+            } else if (event.key == 's') {
+                playerY = playerY + 10;
+            }
+            PlayerMovement();
+            EmitPlayerMovement();
+        }
+            console.log(playerX, playerY, event.key);;
+        }, false);
+    </script>
+</html>
